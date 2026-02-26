@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* #F4F5F7 cool gray page bg */
+    --background: 220 14% 96%;
+    /* #1A1918 near-black */
+    --foreground: 20 4% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 4% 10%;
+    /* #43ff47 bright lime green */
+    --primary: 121 100% 63%;
+    /* dark text on bright green button */
+    --primary-foreground: 20 4% 10%;
+    /* #F0FFF0 active nav bg */
+    --secondary: 120 100% 97%;
+    --secondary-foreground: 20 4% 10%;
+    /* #ECEEF2 cool muted bg */
+    --muted: 220 14% 93%;
+    /* #8F9099 cool gray */
+    --muted-foreground: 225 4% 57%;
+    --accent: 121 100% 63%;
+    --accent-foreground: 20 4% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    /* #E2E4E9 cool border */
+    --border: 220 14% 90%;
+    --input: 220 14% 90%;
+    --ring: 121 100% 63%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
