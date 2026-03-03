@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
-import { KlaviyoClient, createTemplate, prepareTemplateHtml } from '@/lib/klaviyo'
+import { KlaviyoClient, createTemplate, prepareTemplateHtml, createBrandButtons } from '@/lib/klaviyo'
 import { processTemplate, BrandCustomizations } from '@/lib/templates'
 
 interface TemplateOverride {
@@ -105,6 +105,57 @@ export async function POST(request: NextRequest) {
     const client = new KlaviyoClient(apiKey)
     const results: DeployResult[] = []
 
+    // ── Universal Content buttons ────────────────────────────────────────────
+    // Create brand-styled CTA buttons once in Klaviyo so they can be embedded
+    // by reference in every template rather than baked in as raw HTML.
+    // We create two sets: one for product flows (welcome / browse / winback)
+    // and one for cart flows (abandoned checkout) which need the checkout URL.
+    const cartTemplateIds = templates.filter((t) => t.startsWith('abandoned_cart'))
+    const productTemplateIds = templates.filter((t) => !t.startsWith('abandoned_cart'))
+
+    type ButtonIds = { primary?: string; cta?: string }
+    let productButtonIds: ButtonIds = {}
+    let cartButtonIds: ButtonIds = {}
+
+    try {
+      if (productTemplateIds.length > 0) {
+        // Use the first available product URL, falling back to a Klaviyo account variable
+        const firstProductId = productTemplateIds
+          .map((t) => templateProductMap[t] ?? productId)
+          .find(Boolean)
+        const productUrl =
+          (firstProductId ? productCache[firstProductId]?.product_url : undefined) ??
+          '{{ organization.website }}'
+
+        const btns = await createBrandButtons(
+          client,
+          brand.name,
+          brand.primaryColor,
+          productUrl,
+          '#FFFFFF',
+          brand.fontPrimary
+        )
+        productButtonIds = { primary: btns.primary.id, cta: btns.cta.id }
+      }
+
+      if (cartTemplateIds.length > 0) {
+        const btns = await createBrandButtons(
+          client,
+          brand.name,
+          brand.primaryColor,
+          '{{ event.extra.checkout_url }}',
+          '#FFFFFF',
+          brand.fontPrimary
+        )
+        cartButtonIds = { primary: btns.primary.id, cta: btns.cta.id }
+      }
+    } catch (err) {
+      // Non-fatal: log and continue without universal buttons.
+      // The engine will fall back to styling the inline <a> tags normally.
+      console.error('Failed to create universal content buttons:', err)
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     // Base brand customizations (no product — applied per-template below)
     const baseBrandCustomizations: BrandCustomizations = {
       brandName: brand.name,
@@ -145,6 +196,7 @@ export async function POST(request: NextRequest) {
 
         // Merge: brand + product + per-template overrides + generated slots
         const override = templateOverrides[templateId]
+        const isCartTemplate = templateId.startsWith('abandoned_cart')
         const customizations: BrandCustomizations = {
           ...baseBrandCustomizations,
           // Product-specific
@@ -160,6 +212,8 @@ export async function POST(request: NextRequest) {
           generatedSlots,
           // Section spacing
           sectionSpacing: sectionSpacingMap[templateId] ?? undefined,
+          // Universal Content buttons — cart and non-cart flows need different URLs
+          universalButtons: isCartTemplate ? cartButtonIds : productButtonIds,
         }
 
         const processed = processTemplate(html, customizations)
