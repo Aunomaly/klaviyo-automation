@@ -160,48 +160,87 @@ export function getUniversalBlockEmbed(blockId: string): string {
 }
 
 /**
- * Create a set of standard buttons for a brand
+ * Update an existing universal content block (e.g. to refresh button styling)
+ */
+export async function updateUniversalButton(
+  client: KlaviyoClient,
+  blockId: string,
+  options: Partial<CreateButtonOptions>
+): Promise<UniversalContentBlock> {
+  const buttonHtml = generateButtonHtml({
+    text: options.text ?? 'Shop Now',
+    url: options.url ?? '#',
+    backgroundColor: options.backgroundColor ?? '#000000',
+    textColor: options.textColor ?? '#FFFFFF',
+    borderRadius: options.borderRadius ?? '5px',
+    fontSize: options.fontSize ?? '16px',
+    fontFamily: options.fontFamily ?? 'Helvetica, Arial, sans-serif',
+    padding: options.padding ?? '15px 25px',
+  })
+
+  const payload = {
+    data: {
+      type: 'universal-content',
+      id: blockId,
+      attributes: {
+        ...(options.name && { name: options.name }),
+        definition: {
+          content_type: 'html',
+          data: { source: buttonHtml },
+        },
+      },
+    },
+  }
+
+  const response = await client.patch<{ data: UniversalContentBlock }>(
+    `/universal-content/${blockId}/`,
+    payload
+  )
+
+  return response.data
+}
+
+/**
+ * Create a set of standard CTA buttons for a brand.
+ *
+ * @param ctaUrl  The URL (or Klaviyo variable such as `{{ event.extra.checkout_url }}`)
+ *                to use for all buttons in this set.
+ * @param fontFamily  Optional brand font; falls back to Helvetica stack.
  */
 export async function createBrandButtons(
   client: KlaviyoClient,
   brandName: string,
   primaryColor: string,
-  textColor: string = '#FFFFFF'
+  ctaUrl: string,
+  textColor: string = '#FFFFFF',
+  fontFamily?: string
 ): Promise<{
   primary: UniversalContentBlock
-  secondary: UniversalContentBlock
   cta: UniversalContentBlock
 }> {
-  const primary = await createUniversalButton(client, {
-    name: `${brandName} - Primary Button`,
-    text: 'Shop Now',
-    url: '{{ url }}', // Klaviyo variable for dynamic URL
+  const sharedOptions = {
+    url: ctaUrl,
     backgroundColor: primaryColor,
     textColor,
     borderRadius: '5px',
-    padding: '15px 30px',
-  })
+    ...(fontFamily && { fontFamily }),
+  }
 
-  const secondary = await createUniversalButton(client, {
-    name: `${brandName} - Secondary Button`,
-    text: 'Learn More',
-    url: '{{ url }}',
-    backgroundColor: 'transparent',
-    textColor: primaryColor,
-    borderRadius: '5px',
-    padding: '15px 30px',
+  const primary = await createUniversalButton(client, {
+    ...sharedOptions,
+    name: `${brandName} - Primary Button`,
+    text: 'Shop Now',
+    padding: '16px 30px',
+    fontSize: '20px',
   })
 
   const cta = await createUniversalButton(client, {
+    ...sharedOptions,
     name: `${brandName} - CTA Button`,
     text: 'Complete Your Purchase',
-    url: '{{ url }}',
-    backgroundColor: primaryColor,
-    textColor,
-    borderRadius: '5px',
     padding: '18px 35px',
-    fontSize: '18px',
+    fontSize: '20px',
   })
 
-  return { primary, secondary, cta }
+  return { primary, cta }
 }

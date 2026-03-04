@@ -22,6 +22,7 @@ export class TemplateEngine {
     let processed = this.html
 
     // Apply customizations in order
+    processed = this.replaceButtonsWithUniversalBlocks(processed)
     processed = this.replaceColors(processed)
     processed = this.replaceFonts(processed)
     processed = this.replaceLogo(processed)
@@ -41,6 +42,44 @@ export class TemplateEngine {
       customizations: this.customizations,
       hasEditableRegions: true,
     }
+  }
+
+  /**
+   * Replace inline button tables with Klaviyo Universal Content block embeds.
+   *
+   * Each button in the templates is structured as:
+   *   <table style="border-collapse:separate;line-height:100%;">   ← unique to button cells
+   *     <tr><td bgcolor="...">
+   *       <a data-slot="cta_button" ...>Text</a>
+   *     </td></tr>
+   *   </table>
+   *
+   * This step swaps that entire inner table with:
+   *   <div data-klaviyo-universal-block="BLOCK_ID">&nbsp;</div>
+   *
+   * The surrounding <td class="kl-button"> centering wrapper is preserved.
+   * If universalButtons is not configured the method is a no-op, and the
+   * normal color/font passes will style the inline buttons instead.
+   */
+  private replaceButtonsWithUniversalBlocks(html: string): string {
+    const { universalButtons } = this.customizations
+    if (!universalButtons?.primary) return html
+
+    return html.replace(
+      /<table\b[^>]*\bstyle="border-collapse:separate;line-height:100%;"[^>]*>[\s\S]*?<\/table>/gi,
+      (match) => {
+        const slotMatch = match.match(/\bdata-slot="(cta_button(?:_\w+)?)"/i)
+        if (!slotMatch) return match
+
+        const slotName = slotMatch[1]
+        const blockId =
+          slotName !== 'cta_button'
+            ? (universalButtons.cta ?? universalButtons.primary!)
+            : universalButtons.primary!
+
+        return `<div data-klaviyo-universal-block="${blockId}">&nbsp;</div>`
+      }
+    )
   }
 
   /**

@@ -65,6 +65,14 @@ export interface BrandCustomizations {
 
   // Section spacing multiplier: 0.5 = tighter, 1 = default, 1.5 = looser
   sectionSpacing?: number
+
+  // Klaviyo Universal Content block IDs for CTA buttons.
+  // When set, the engine replaces inline button HTML with universal block embeds
+  // so button styling is managed centrally in Klaviyo rather than baked per-template.
+  universalButtons?: {
+    primary?: string  // block ID for cta_button slots
+    cta?: string      // block ID for cta_button_2 slots (falls back to primary)
+  }
 }
 
 export interface ProcessedTemplate {
