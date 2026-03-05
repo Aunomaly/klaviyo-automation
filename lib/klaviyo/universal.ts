@@ -200,6 +200,98 @@ export async function updateUniversalButton(
   return response.data
 }
 
+export interface CreateHeaderOptions {
+  name: string
+  logoUrl: string
+  websiteUrl: string
+  brandName: string
+  fontFamily?: string
+}
+
+export interface CreateFooterOptions {
+  name: string
+  logoUrl: string
+  websiteUrl: string
+  brandName: string
+  primaryColor: string
+  fontFamily?: string
+}
+
+/**
+ * Generate header HTML with centered logo for universal content
+ */
+function generateHeaderHtml(options: CreateHeaderOptions): string {
+  const { logoUrl, websiteUrl, brandName } = options
+  return `<div style="text-align:center;padding:40px 25px;background-color:#ffffff;">
+  <a href="${websiteUrl}" target="_blank" style="display:inline-block;">
+    <img src="${logoUrl}" alt="${brandName}" width="206" style="display:block;height:auto;width:100%;max-width:206px;" />
+  </a>
+</div>`.trim()
+}
+
+/**
+ * Generate footer HTML with logo, questions section, and unsubscribe for universal content.
+ * Uses Klaviyo Liquid tags ({{ organization.name }}, {% unsubscribe %}, {% current_year %})
+ * which are evaluated at send time.
+ */
+function generateFooterHtml(options: CreateFooterOptions): string {
+  const { logoUrl, websiteUrl, brandName, primaryColor, fontFamily = 'Helvetica, Arial, sans-serif' } = options
+  return `<div style="background:${primaryColor};background-color:${primaryColor};padding:32px 20px 24px;text-align:center;">
+  <p style="margin:0 0 8px;font-family:${fontFamily};font-weight:bold;color:#ffffff;font-size:18px;">Questions?</p>
+  <p style="margin:0 0 20px;font-family:${fontFamily};font-weight:400;color:#ffffff;font-size:12px;">Feel free to respond to this email with any questions you may have</p>
+  <a href="${websiteUrl}" target="_blank" style="display:inline-block;padding:15px 0;">
+    <img src="${logoUrl}" alt="${brandName}" width="130" style="display:block;height:auto;width:130px;" />
+  </a>
+  <p style="margin:12px 0 0;font-family:${fontFamily};color:#f4f4f4;font-size:12px;">{{ organization.name }} {% unsubscribe %}<br/>&#169; {% current_year %} | All rights reserved.</p>
+</div>`.trim()
+}
+
+/**
+ * Create a universal header block (brand logo) in Klaviyo
+ */
+export async function createBrandHeader(
+  client: KlaviyoClient,
+  options: CreateHeaderOptions
+): Promise<UniversalContentBlock> {
+  const payload = {
+    data: {
+      type: 'universal-content',
+      attributes: {
+        name: options.name,
+        definition: {
+          content_type: 'html',
+          data: { source: generateHeaderHtml(options) },
+        },
+      },
+    },
+  }
+  const response = await client.post<{ data: UniversalContentBlock }>('/universal-content/', payload)
+  return response.data
+}
+
+/**
+ * Create a universal footer block (logo, questions, unsubscribe) in Klaviyo
+ */
+export async function createBrandFooter(
+  client: KlaviyoClient,
+  options: CreateFooterOptions
+): Promise<UniversalContentBlock> {
+  const payload = {
+    data: {
+      type: 'universal-content',
+      attributes: {
+        name: options.name,
+        definition: {
+          content_type: 'html',
+          data: { source: generateFooterHtml(options) },
+        },
+      },
+    },
+  }
+  const response = await client.post<{ data: UniversalContentBlock }>('/universal-content/', payload)
+  return response.data
+}
+
 /**
  * Create a set of standard CTA buttons for a brand.
  *

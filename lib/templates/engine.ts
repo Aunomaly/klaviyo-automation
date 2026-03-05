@@ -22,6 +22,8 @@ export class TemplateEngine {
     let processed = this.html
 
     // Apply customizations in order
+    processed = this.replaceHeaderWithUniversalBlock(processed)
+    processed = this.replaceFooterWithUniversalBlock(processed)
     processed = this.replaceButtonsWithUniversalBlocks(processed)
     processed = this.replaceColors(processed)
     processed = this.replaceFonts(processed)
@@ -42,6 +44,35 @@ export class TemplateEngine {
       customizations: this.customizations,
       hasEditableRegions: true,
     }
+  }
+
+  /**
+   * Replace the header logo section with a Klaviyo Universal Content block embed.
+   * Templates must have <!-- KL:header-start --> / <!-- KL:header-end --> markers
+   * around the hlb-wrapper div. No-op if universalHeader is not configured.
+   */
+  private replaceHeaderWithUniversalBlock(html: string): string {
+    const { universalHeader } = this.customizations
+    if (!universalHeader) return html
+    return html.replace(
+      /<!-- KL:header-start -->[\s\S]*?<!-- KL:header-end -->/gi,
+      `<div data-klaviyo-universal-block="${universalHeader}">&nbsp;</div>`
+    )
+  }
+
+  /**
+   * Replace the footer section with a Klaviyo Universal Content block embed.
+   * Templates must have <!-- KL:footer-start --> / <!-- KL:footer-end --> markers
+   * around the kl-section table that contains {% unsubscribe %}.
+   * No-op if universalFooter is not configured.
+   */
+  private replaceFooterWithUniversalBlock(html: string): string {
+    const { universalFooter } = this.customizations
+    if (!universalFooter) return html
+    return html.replace(
+      /<!-- KL:footer-start -->[\s\S]*?<!-- KL:footer-end -->/gi,
+      `<div data-klaviyo-universal-block="${universalFooter}">&nbsp;</div>`
+    )
   }
 
   /**

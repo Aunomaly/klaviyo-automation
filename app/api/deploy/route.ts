@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
-import { KlaviyoClient, createTemplate, prepareTemplateHtml, createBrandButtons } from '@/lib/klaviyo'
+import { KlaviyoClient, createTemplate, prepareTemplateHtml, createBrandButtons, createBrandHeader, createBrandFooter } from '@/lib/klaviyo'
 import { processTemplate, BrandCustomizations } from '@/lib/templates'
 
 interface TemplateOverride {
@@ -27,6 +27,7 @@ interface DeployRequest {
     accentColor: string
     fontPrimary: string
     logoUrl?: string
+    websiteUrl?: string
   }
   // Per-template section spacing multiplier
   sectionSpacingMap?: Record<string, number>
@@ -154,6 +155,42 @@ export async function POST(request: NextRequest) {
       // The engine will fall back to styling the inline <a> tags normally.
       console.error('Failed to create universal content buttons:', err)
     }
+
+    // ── Universal Content header & footer ────────────────────────────────────
+    // Create a shared header (logo) and footer (logo, questions, unsubscribe)
+    // once per deploy. The engine swaps the marked sections in each template
+    // with the universal block embed, so they can be updated centrally in
+    // Klaviyo's drag-and-drop builder. Both are non-fatal — templates fall back
+    // to inline HTML if creation fails or logoUrl is not provided.
+    let universalHeader: string | undefined
+    let universalFooter: string | undefined
+
+    try {
+      if (brand.logoUrl) {
+        const websiteUrl = brand.websiteUrl ?? '#'
+
+        const headerBlock = await createBrandHeader(client, {
+          name: `${brand.name} - Header`,
+          logoUrl: brand.logoUrl,
+          websiteUrl,
+          brandName: brand.name,
+          fontFamily: brand.fontPrimary,
+        })
+        universalHeader = headerBlock.id
+
+        const footerBlock = await createBrandFooter(client, {
+          name: `${brand.name} - Footer`,
+          logoUrl: brand.logoUrl,
+          websiteUrl,
+          brandName: brand.name,
+          primaryColor: brand.primaryColor,
+          fontFamily: brand.fontPrimary,
+        })
+        universalFooter = footerBlock.id
+      }
+    } catch (err) {
+      console.error('Failed to create universal content header/footer:', err)
+    }
     // ────────────────────────────────────────────────────────────────────────
 
     // Base brand customizations (no product — applied per-template below)
@@ -164,6 +201,7 @@ export async function POST(request: NextRequest) {
       accentColor: brand.accentColor,
       fontPrimary: brand.fontPrimary,
       logoUrl: brand.logoUrl,
+      brandUrl: brand.websiteUrl,
     }
 
     for (const templateId of templates) {
@@ -214,6 +252,9 @@ export async function POST(request: NextRequest) {
           sectionSpacing: sectionSpacingMap[templateId] ?? undefined,
           // Universal Content buttons — cart and non-cart flows need different URLs
           universalButtons: isCartTemplate ? cartButtonIds : productButtonIds,
+          // Universal Content header and footer — shared across all templates
+          universalHeader,
+          universalFooter,
         }
 
         const processed = processTemplate(html, customizations)

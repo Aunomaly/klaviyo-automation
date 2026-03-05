@@ -73,6 +73,12 @@ export interface BrandCustomizations {
     primary?: string  // block ID for cta_button slots
     cta?: string      // block ID for cta_button_2 slots (falls back to primary)
   }
+
+  // Klaviyo Universal Content block IDs for header and footer sections.
+  // When set, the engine replaces the header logo section and footer with universal
+  // block embeds so they can be updated centrally in Klaviyo's drag-and-drop builder.
+  universalHeader?: string  // block ID for the header logo section
+  universalFooter?: string  // block ID for the footer (logo, questions, unsubscribe)
 }
 
 export interface ProcessedTemplate {
